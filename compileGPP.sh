@@ -1,12 +1,12 @@
-# compileGPP.fish
+#!/bin/bash
 
-# Create a build directory
+# Create a build directory[cite: 8]
 mkdir -p build
 
-# Common compiler flags in Fish (using an array/list)
-set -l CXXFLAGS -O3 -g -march=native -fno-math-errno -fno-exceptions -fno-rtti
+# Common compiler flags[cite: 8]
+CXXFLAGS="-O3 -g -march=native -fno-math-errno -fno-exceptions -fno-rtti"
 
-echo "Compiling modules..."
+echo "Compiling modules..."[cite: 8]
 g++ $CXXFLAGS -c Output.cpp -o build/Output.o
 g++ $CXXFLAGS -c MathFunc.cpp -o build/MathFunc.o
 g++ $CXXFLAGS -c TensorUtils.cpp -o build/TensorUtils.o
@@ -14,24 +14,24 @@ g++ $CXXFLAGS -c MatVec.cpp -o build/MatVec.o
 g++ $CXXFLAGS -c ConjugateGradient.cpp -o build/ConjugateGradient.o
 g++ $CXXFLAGS -c GMRES.cpp -o build/GMRES.o
 
-# Helper list of utility objects
-set -l CORE_OBJS build/Output.o build/MathFunc.o build/TensorUtils.o build/MatVec.o build/ConjugateGradient.o build/GMRES.o
+# Helper array of utility objects[cite: 8]
+CORE_OBJS=("build/Output.o" "build/MathFunc.o" "build/TensorUtils.o" "build/MatVec.o" "build/ConjugateGradient.o" "build/GMRES.o")
 
-echo "Building FP32 executable..."
+echo "Building FP32 executable..."[cite: 8]
 g++ $CXXFLAGS -c main_fp32.cpp -o build/main_fp32.o
-g++ -o main_fp32.out build/main_fp32.o $CORE_OBJS
+g++ -o main_fp32.out build/main_fp32.o "${CORE_OBJS[@]}"
 objdump -S -d build/main_fp32.o > main_fp32.asm
 
-echo "Building FP64 executable..."
+echo "Building FP64 executable..."[cite: 8]
 g++ $CXXFLAGS -c main_fp64.cpp -o build/main_fp64.o
-g++ -o main_fp64.out build/main_fp64.o $CORE_OBJS
+g++ -o main_fp64.out build/main_fp64.o "${CORE_OBJS[@]}"
 objdump -S -d build/main_fp64.o > main_fp64.asm
 
-echo "Generating assembly dumps for modules..."
+echo "Generating assembly dumps for modules..."[cite: 8]
 objdump -S -d build/MathFunc.o > MathFunc.asm
 objdump -S -d build/TensorUtils.o > TensorUtils.asm
 objdump -S -d build/MatVec.o > MatVec.asm
 objdump -S -d build/ConjugateGradient.o > ConjugateGradient.asm
 objdump -S -d build/GMRES.o > GMRES.asm
 
-echo "Build complete!"
+echo "Build complete!"[cite: 8]
