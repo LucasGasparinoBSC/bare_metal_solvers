@@ -10,18 +10,24 @@ int main() {
     double d[ARR_SIZE];
     double e[ARR_SIZE];
     for (idx = 0; idx < ARR_SIZE; idx++) {
-        c[idx] = 1.0f;
-        d[idx] = 4.0f;
-        e[idx] = 1.0f;
+        c[idx] = 1.0;
+        d[idx] = 4.0;
+        e[idx] = 1.0;
     }
 
     // Generate x0 and rhs
     double x0[ARR_SIZE];
+    double x_ex[ARR_SIZE];
     double rhs[ARR_SIZE];
-    for (idx = 0; idx < ARR_SIZE; idx++) {
+    for (idx = 0; idx < ARR_SIZE; idx++)
+    {
         x0[idx] = 0.001f;
-        rhs[idx] = static_cast<double>(idx + 1);
+        double val = static_cast<double>(idx) - static_cast<double>(ARR_SIZE) / 2.0;
+        double tmp = 1.0 - (4.0 / (static_cast<double>(ARR_SIZE) * static_cast<double>(ARR_SIZE))) * (val * val);
+        x_ex[idx] = static_cast<double>(tmp);
     }
+    // Use matvec to compute rhs = A * x_ex
+    MatVec<uint32_t, double>::cyclic_tridiag(c, d, e, x_ex, rhs, ARR_SIZE);
 
     // Create the ConjugateGradient object
     ConjugateGradient<uint32_t, double> solver(x0, rhs);

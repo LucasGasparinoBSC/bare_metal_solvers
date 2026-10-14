@@ -17,11 +17,16 @@ int main() {
 
     // Generate x0 and rhs
     float x0[ARR_SIZE];
+    float x_ex[ARR_SIZE];
     float rhs[ARR_SIZE];
     for (idx = 0; idx < ARR_SIZE; idx++) {
         x0[idx] = 0.001f;
-        rhs[idx] = static_cast<float>(idx + 1);
+        double val = static_cast<double>(idx) - static_cast<double>(ARR_SIZE) / 2.0;
+        double tmp = 1.0 - (4.0 / (static_cast<double>(ARR_SIZE) * static_cast<double>(ARR_SIZE))) * (val * val);
+        x_ex[idx] = static_cast<float>(tmp);
     }
+    // Use matvec to compute rhs = A * x_ex
+    MatVec<uint32_t,float>::cyclic_tridiag(c, d, e, x_ex, rhs, ARR_SIZE);
 
     // Create the ConjugateGradient object
     ConjugateGradient<uint32_t, float> solver(x0, rhs);

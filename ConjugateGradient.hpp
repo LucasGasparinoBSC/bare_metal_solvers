@@ -8,7 +8,7 @@
 #include "Output.hpp"
 
 #ifndef ARR_SIZE
-    #define ARR_SIZE 10
+    #define ARR_SIZE 20
 #endif
 
 #ifndef MITERS
