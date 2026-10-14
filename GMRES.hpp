@@ -8,11 +8,11 @@
 #include "Output.hpp"
 
 #ifndef ARR_SIZE
-    #define ARR_SIZE 20
+    #define ARR_SIZE 10
 #endif
 
 #ifndef MITERS
-    #define MITERS 10
+    #define MITERS 12
 #endif
 
 template<typename ITYPE, typename RTYPE>

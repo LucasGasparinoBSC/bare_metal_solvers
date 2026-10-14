@@ -5,14 +5,20 @@
 int main() {
     uint32_t idx;
 
+    Output::print("Starting main program...\n");
+    Output::print("ARR_SIZE = %d, MITERS = %d\n", ARR_SIZE, MITERS);
+
     // Generate the matrix
     double c[ARR_SIZE];
     double d[ARR_SIZE];
     double e[ARR_SIZE];
+    double h = 1.0 / (static_cast<double>(ARR_SIZE) + 1.0);
+    double hh = h * h;
+    double khh = 1.0 / hh;
     for (idx = 0; idx < ARR_SIZE; idx++) {
-        c[idx] = 1.0;
-        d[idx] = 4.0;
-        e[idx] = 1.0;
+        c[idx] = khh * -1.0;
+        d[idx] = khh * 2.0;
+        e[idx] = khh * -1.0;
     }
 
     // Generate x0 and rhs

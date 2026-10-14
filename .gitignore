@@ -1,2 +1,5 @@
 /.vscode
-/cg_fp32.tar.gz
+build*
+build_*
+*.asm
+*.out

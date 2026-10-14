@@ -8,11 +8,11 @@
 #include "Output.hpp"
 
 #ifndef ARR_SIZE
-    #define ARR_SIZE 20
+    #define ARR_SIZE 10
 #endif
 
 #ifndef MITERS
-    #define MITERS 10
+    #define MITERS 12
 #endif
 
 template<typename ITYPE, typename RTYPE>
@@ -55,6 +55,9 @@ class ConjugateGradient
         template<typename MatVecOp>
         void cg(MatVecOp&& MV_Op)
         {
+
+            Output::print("Starting Conjugate Gradient solver...\n");
+
             // Set x_sol to x0
             TensorUtils<ITYPE, RTYPE>::copy_array(ARR_SIZE, x0, x_sol);
 
@@ -71,6 +74,7 @@ class ConjugateGradient
             // Compute resK and res0
             TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, rk, rk, resK);
             res0[0] = MathFunc<double>::sqrt(resK[0]);
+            Output::print("Initial residual norm = %f\n", res0[0]);
 
             // Iterate
             for (iter = 0; iter < maxIters; ++iter) {
@@ -93,8 +97,10 @@ class ConjugateGradient
 
                 // Check for convergence
                 if (MathFunc<double>::sqrt(beta[0]) < tol*res0[0]) {
+                    Output::print("Converged after %d iterations with residual norm = %f\n", iter + 1, MathFunc<double>::sqrt(beta[0]));
                     break;
                 }
+                Output::print("Iteration %d: residual norm = %f\n", iter + 1, MathFunc<double>::sqrt(beta[0]));
 
                 // Compute beta = (rk' * rk) / (previous rk' * previous rk)
                 beta[0] = beta[0] / resK[0];
