@@ -15,9 +15,10 @@ int main() {
     double h = 1.0 / (static_cast<double>(ARR_SIZE) + 1.0);
     double hh = h * h;
     double khh = 1.0 / hh;
+    double fact = 10.0;
     for (idx = 0; idx < ARR_SIZE; idx++) {
         c[idx] = khh * -1.0;
-        d[idx] = khh * 2.0;
+        d[idx] = (khh * 2.0) + fact;
         e[idx] = khh * -1.0;
     }
 

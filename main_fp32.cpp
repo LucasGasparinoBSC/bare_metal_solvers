@@ -16,10 +16,11 @@ int main()
     float h = 1.0f / (static_cast<float>(ARR_SIZE) + 1.0f);
     float hh = h * h;
     float khh = 1.0f / hh;
+    float fact = 10.0f;
     for (idx = 0; idx < ARR_SIZE; idx++)
     {
         c[idx] = khh * -1.0f;
-        d[idx] = khh * 2.0f;
+        d[idx] = (khh * 2.0f) + fact;
         e[idx] = khh * -1.0f;
     }
 
