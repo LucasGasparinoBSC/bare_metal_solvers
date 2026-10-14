@@ -1,4 +1,5 @@
 #include "ConjugateGradient.hpp"
+#include "GMRES.hpp"
 #include "Output.hpp"
 
 int main() {
@@ -12,7 +13,6 @@ int main() {
         c[idx] = 1.0f;
         d[idx] = 4.0f;
         e[idx] = 1.0f;
-        Output::print("c[%d] = %f, d[%d] = %f, e[%d] = %f\n", idx, c[idx], idx, d[idx], idx, e[idx]);
     }
 
     // Generate x0 and rhs
@@ -36,9 +36,9 @@ int main() {
     const float* solution = solver.get_solution();
 
     // Print the solution
-    for (idx = 0; idx < ARR_SIZE; idx++) {
-        Output::print("solution[%d] = %f\n", idx, solution[idx]);
-    }
+    //for (idx = 0; idx < ARR_SIZE; idx++) {
+    //    Output::print("solution[%d] = %f\n", idx, solution[idx]);
+    //}
 
     // Verify: do Ax-b and check results
     float Ax[ARR_SIZE];
@@ -55,6 +55,10 @@ int main() {
             }
         }
     }
+
+    // Now for running the GMRES
+    GMRES<uint32_t, float> gmres_solver(x0, rhs);
+    gmres_solver.solve_basic(MV_Op);
 
     return 0;
 }

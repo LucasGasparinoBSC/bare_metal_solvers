@@ -22,6 +22,7 @@ GMRES<ITYPE, RTYPE>::~GMRES()
 template<typename ITYPE, typename RTYPE>
 void GMRES<ITYPE, RTYPE>::setup(const RTYPE* __restrict xinit, const RTYPE* __restrict rhs)
 {
+    Output::print("Setting up GMRES solver...\n");
     x0 = xinit;
     b = rhs;
 
@@ -35,6 +36,13 @@ void GMRES<ITYPE, RTYPE>::setup(const RTYPE* __restrict xinit, const RTYPE* __re
     for (ITYPE i = 0; i < (MITERS + 1) * MITERS; ++i)
     {
         H_k[i] = zeroFP64;
+    }
+
+    // Initialize Givens rotation coefficients to 0
+    for (ITYPE i = 0; i < MITERS; ++i)
+    {
+        cs[i] = zeroFP64;
+        sn[i] = zeroFP64;
     }
 }
 

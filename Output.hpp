@@ -53,7 +53,7 @@ class Output
             raw_print(&buf[i + 1]);
         }
 
-        static inline void raw_print_double(double val, int precision = 4)
+        static inline void raw_print_double(double val, int precision = 6)
         {
             if (val < 0)
             {
@@ -65,11 +65,15 @@ class Output
             raw_putchar('.');
 
             double frac_part = val - (double)int_part;
+
+            // Compute 10^precision dynamically or via small loop
+            double scale = 1.0;
             for (int i = 0; i < precision; i++)
             {
-                frac_part *= 10.0;
+                scale *= 10.0;
             }
-            raw_print_int((int64_t)(frac_part + 0.5));
+
+            raw_print_int((int64_t)(frac_part * scale + 0.5));
         }
 
         // Overloaded type dispatchers prevent invalid compile-time casts in templates
