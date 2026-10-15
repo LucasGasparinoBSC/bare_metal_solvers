@@ -35,7 +35,8 @@ class GMRES
         double hk[1];                       // H_k entries ptr
         double cs[MITERS];                  // Cosine values for Givens rotations
         double sn[MITERS];                  // Sine values for Givens rotations
-        double gk[MITERS+1];                // Norm tracker
+        double gk[MITERS + 1];              // Norm tracker
+        double yk[MITERS + 1];              // LSQ solution vector
         RTYPE wk[ARR_SIZE];                 // Auxiliary vector for Arnoldi process
         RTYPE qk[ARR_SIZE];                 // Current Krylov vector
         RTYPE x_sol[ARR_SIZE];              // Solution vector
@@ -174,6 +175,7 @@ class GMRES
 
             // Iterate for k = 0 to maxIters
             kIter = 0;
+            bool converged = false;
             while (kIter < maxIters) {
 
                 // Call Arnoldi process to compute Q_k and H_k
@@ -183,6 +185,7 @@ class GMRES
                 if (arnoldiConverged) {
                     // Break out of the loop if Arnoldi converged
                     Output::print("Arnoldi process converged at iteration %d\n", kIter);
+                    converged = true;
                     break;
                 }
 
@@ -198,6 +201,7 @@ class GMRES
                 Output::print("GMRES iteration %d: relative tolerance = %f\n", kIter, relTol);
                 if (relTol < tol) {
                     Output::print("GMRES converged at iteration %d with relative tolerance %f\n", kIter, relTol);
+                    converged = true;
                     break; // Converged
                 }
                 kIter++;
@@ -206,8 +210,40 @@ class GMRES
             for (ITYPE j = 0; j < kIter + 1; ++j) {
                 Output::print("gk[%d] = %f\n", j, gk[j]);
             }
-        }
 
+            // Check convergence state
+            if (!converged)
+            {
+                Output::print("Convergence flag value: %d\n", converged);
+                Output::print("GMRES did not converge within the maximum iterations (%d)\n", maxIters);
+                while (1)
+                {
+                    asm volatile("nop");
+                }
+            }
+
+            // Solve the least squares problem H_k * y = gk
+            // Using back substitution since H_k is upper triangular after Givens rotations
+            // NOTE: H_k is column-major stored, so we need to access it accordingly
+            int kStore = static_cast<int>(kIter);
+            for (int i = kStore; i >= 0; --i) {
+                yk[i] = gk[i];
+                for (int j = i + 1; j <= kStore; ++j) {
+                    yk[i] -= H_k[j * (MITERS + 1) + i] * yk[j];
+                }
+                yk[i] /= H_k[i * (MITERS + 1) + i];
+            }
+
+            // Update the solution x_sol = x0 + Q_k * yk
+            // NOTE: Q_k is column-major stored, so we need to access it accordingly
+            for (ITYPE i = 0; i < ARR_SIZE; ++i) {
+                x_sol[i] = x0[i];
+                for (ITYPE j = 0; j <= kIter; ++j) {
+                    RTYPE tmp = static_cast<RTYPE>(yk[j]);
+                    x_sol[i] += Q_k[j * ARR_SIZE + i] * tmp;
+                }
+            }
+        }
 };
 
 #endif // GMRES_HPP

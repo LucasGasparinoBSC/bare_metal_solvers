@@ -72,6 +72,37 @@ int main() {
     // Now for running the GMRES
     GMRES<uint32_t, double> gmres_solver(x0, rhs);
     gmres_solver.solve_basic(MV_Op);
+    Output::print("GMRES solver completed.\n");
+    const double* gmres_solution = gmres_solver.get_solution();
+
+    // Print the GMRES solution
+    for (idx = 0; idx < ARR_SIZE; idx++) {
+        Output::print("gmres_solution[%d] = %f\n", idx, gmres_solution[idx]);
+    }
+
+    // Redo the same verification for GMRES
+    MV_Op(gmres_solution, Ax);
+    for (idx = 0; idx < ARR_SIZE; idx++) {
+        r[idx] = Ax[idx] - rhs[idx];
+        if (r[idx] < 0.0f) r[idx] = -r[idx];
+        // HW trap
+        if (r[idx] > 1e-4f) {
+            while(1) {
+                asm volatile("nop");
+            }
+        }
+    }
+
+    // Compare the solutions from CG and GMRES
+    for (idx = 0; idx < ARR_SIZE; idx++) {
+        double diff = MathFunc<double>::abs(solution[idx] - gmres_solution[idx]);
+        if (diff > 1e-4f) {
+            Output::print("Difference between CG and GMRES solutions at index %d is too large: %f\n", idx, diff);
+            while(1) {
+                asm volatile("nop");
+            }
+        }
+    }
 
     return 0;
 }
