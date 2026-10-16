@@ -229,20 +229,23 @@ class GMRES
                 // Call Arnoldi process to compute Q_k and H_k
                 arnoldiConverged = arnoldi(MV_Op, kIter);
 
-                // Check if arnoldi converged (happy breakdown)
-                if (arnoldiConverged) {
-                    // Break out of the loop if Arnoldi converged
-                    Output::print("Arnoldi process converged at iteration %d\n", kIter);
-                    converged = true;
-                    break;
-                }
-
                 // Apply Givens rotations to H_k
                 apply_givens_rotation(kIter);
 
                 // Update gk
                 gk[kIter + 1] = sn[kIter] * gk[kIter];
                 gk[kIter] = cs[kIter] * gk[kIter];
+
+                // Check if arnoldi converged (happy breakdown)
+                if (arnoldiConverged)
+                {
+                    // Break out of the loop if Arnoldi converged
+                    Output::print("Arnoldi process converged at iteration %d\n", kIter);
+                    double relTol = MathFunc<double>::abs(gk[kIter + 1]) / b_norm[0];
+                    Output::print("GMRES converged at iteration %d with relative tolerance %f\n", kIter, relTol);
+                    converged = true;
+                    break;
+                }
 
                 // Check convergence
                 double relTol = MathFunc<double>::abs(gk[kIter + 1]) / b_norm[0];
