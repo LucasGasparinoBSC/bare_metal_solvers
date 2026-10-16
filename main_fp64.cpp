@@ -15,7 +15,7 @@ int main() {
     double h = 1.0 / (static_cast<double>(ARR_SIZE) + 1.0);
     double hh = h * h;
     double khh = 1.0 / hh;
-    double fact = 10.0;
+    double fact = 1.1;
     for (idx = 0; idx < ARR_SIZE; idx++) {
         c[idx] = khh * -1.0;
         d[idx] = (khh * 2.0) + fact;
@@ -43,7 +43,12 @@ int main() {
     auto MV_Op = [&](const double* __restrict x, double* __restrict Ax) {
         MatVec<uint32_t,double>::cyclic_tridiag(c, d, e, x, Ax, ARR_SIZE);
     };
-    solver.cg(MV_Op);
+    auto Prec_Op = [&](const double* __restrict r, double* __restrict z) {
+        MatVec<uint32_t,double>::diag_precond(d, r, z, ARR_SIZE);
+    };
+
+    //solver.cg(MV_Op);
+    solver.pcg(MV_Op, Prec_Op);
 
     // Retrieve the solution
     const double* solution = solver.get_solution();
@@ -71,7 +76,8 @@ int main() {
 
     // Now for running the GMRES
     GMRES<uint32_t, double> gmres_solver(x0, rhs);
-    gmres_solver.solve_basic(MV_Op);
+    //gmres_solver.solve_basic(MV_Op);
+    gmres_solver.right_prec(MV_Op, Prec_Op);
     Output::print("GMRES solver completed.\n");
     const double* gmres_solution = gmres_solver.get_solution();
 
@@ -101,6 +107,9 @@ int main() {
             while(1) {
                 asm volatile("nop");
             }
+        }
+        else {
+            Output::print("Difference between CG and GMRES solutions at index %d is acceptable: %f\n", idx, diff);
         }
     }
 

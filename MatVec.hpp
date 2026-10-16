@@ -13,6 +13,11 @@ class MatVec
                                    const RTYPE *__restrict x,
                                    RTYPE *__restrict y,
                                    const ITYPE n);
+
+        static void diag_precond(const RTYPE *__restrict d,
+                                                const RTYPE *__restrict x,
+                                                RTYPE *__restrict y,
+                                                const ITYPE n);
 };
 
 #endif

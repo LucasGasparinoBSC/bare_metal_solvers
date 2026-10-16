@@ -13,15 +13,15 @@ int main()
     float c[ARR_SIZE];
     float d[ARR_SIZE];
     float e[ARR_SIZE];
-    float h = 1.0f / (static_cast<float>(ARR_SIZE) + 1.0f);
+    float h = 1.0 / (static_cast<float>(ARR_SIZE) + 1.0);
     float hh = h * h;
-    float khh = 1.0f / hh;
-    float fact = 10.0f;
+    float khh = 1.0 / hh;
+    float fact = 1.1;
     for (idx = 0; idx < ARR_SIZE; idx++)
     {
-        c[idx] = khh * -1.0f;
-        d[idx] = (khh * 2.0f) + fact;
-        e[idx] = khh * -1.0f;
+        c[idx] = khh * -1.0;
+        d[idx] = (khh * 2.0) + fact;
+        e[idx] = khh * -1.0;
     }
 
     // Generate x0 and rhs
@@ -46,15 +46,21 @@ int main()
     {
         MatVec<uint32_t, float>::cyclic_tridiag(c, d, e, x, Ax, ARR_SIZE);
     };
-    solver.cg(MV_Op);
+    auto Prec_Op = [&](const float *__restrict r, float *__restrict z)
+    {
+        MatVec<uint32_t, float>::diag_precond(d, r, z, ARR_SIZE);
+    };
+
+    // solver.cg(MV_Op);
+    solver.pcg(MV_Op, Prec_Op);
 
     // Retrieve the solution
     const float *solution = solver.get_solution();
 
     // Print the solution
-    // for (idx = 0; idx < ARR_SIZE; idx++) {
-    //    Output::print("solution[%d] = %f\n", idx, solution[idx]);
-    //}
+    for (idx = 0; idx < ARR_SIZE; idx++) {
+        Output::print("solution[%d] = %f\n", idx, solution[idx]);
+    }
 
     // Verify: do Ax-b and check results
     float Ax[ARR_SIZE];
@@ -63,12 +69,13 @@ int main()
     for (idx = 0; idx < ARR_SIZE; idx++)
     {
         r[idx] = Ax[idx] - rhs[idx];
-        if (r[idx] < 0.0f)
-            r[idx] = -r[idx];
+        r[idx] = MathFunc<float>::abs(r[idx]);
 
         // HW trap
-        if (r[idx] > 1e-4f)
+        float eps = 0.0005f;
+        if (r[idx] > eps)
         {
+            Output::print("Residual at index %d is too large: %f\n", idx, r[idx]);
             while (1)
             {
                 asm volatile("nop");
@@ -78,7 +85,51 @@ int main()
 
     // Now for running the GMRES
     GMRES<uint32_t, float> gmres_solver(x0, rhs);
-    gmres_solver.solve_basic(MV_Op);
+    //gmres_solver.solve_basic(MV_Op);
+    gmres_solver.right_prec(MV_Op, Prec_Op);
+    Output::print("GMRES solver completed.\n");
+    const float *gmres_solution = gmres_solver.get_solution();
+
+    // Print the GMRES solution
+    for (idx = 0; idx < ARR_SIZE; idx++)
+    {
+        Output::print("gmres_solution[%d] = %f\n", idx, gmres_solution[idx]);
+    }
+
+    // Redo the same verification for GMRES
+    MV_Op(gmres_solution, Ax);
+    for (idx = 0; idx < ARR_SIZE; idx++)
+    {
+        r[idx] = MathFunc<float>::abs(Ax[idx] - rhs[idx]);
+        // HW trap
+        float eps = 0.0005f;
+        if (r[idx] > eps)
+        {
+            Output::print("GMRES Residual at index %d is too large: %f\n", idx, r[idx]);
+            while (1)
+            {
+                asm volatile("nop");
+            }
+        }
+    }
+
+    // Compare the solutions from CG and GMRES
+    for (idx = 0; idx < ARR_SIZE; idx++)
+    {
+        float diff = MathFunc<float>::abs(solution[idx] - gmres_solution[idx]);
+        if (diff > 1e-4f)
+        {
+            Output::print("Difference between CG and GMRES solutions at index %d is too large: %f\n", idx, diff);
+            while (1)
+            {
+                asm volatile("nop");
+            }
+        }
+        else
+        {
+            Output::print("Difference between CG and GMRES solutions at index %d is acceptable: %f\n", idx, diff);
+        }
+    }
 
     return 0;
 }

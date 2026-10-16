@@ -115,8 +115,77 @@ class ConjugateGradient
             }
         }
 
-        void pcg();
-        void fpcg();
+        template <typename MatVecOp, typename PrecondOp>
+        void pcg(MatVecOp &&MV_Op, PrecondOp &&Prec_Op)
+        {
+
+            Output::print("Starting Precond. Conjugate Gradient solver...\n");
+
+            // Set x_sol to x0
+            TensorUtils<ITYPE, RTYPE>::copy_array(ARR_SIZE, x0, x_sol);
+
+            // Compute the matvec
+            MV_Op(x_sol, Ax);
+
+            // Compute the initial residual r0 = b - A * x0
+            TensorUtils<ITYPE, RTYPE>::copy_array(ARR_SIZE, b, rk);
+            TensorUtils<ITYPE, RTYPE>::axpy(ARR_SIZE, negOne, Ax, rk);
+
+            // Compute M^-1 * r0 and store in zk
+            Prec_Op(rk, zk);
+
+            // Set p0 = z0
+            TensorUtils<ITYPE, RTYPE>::copy_array(ARR_SIZE, zk, pk);
+
+            // Compute res0 and resK = r0' * z0
+            TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, rk, rk, resK);
+            res0[0] = MathFunc<double>::sqrt(resK[0]);
+            Output::print("Initial residual norm = %f\n", res0[0]);
+            TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, rk, zk, resK);
+
+            // Iterate
+            for (iter = 0; iter < maxIters; ++iter)
+            {
+                // Compute the matvec
+                MV_Op(pk, Ax);
+
+                // Compute alpha = (rk' * zk) / (pk' * A * pk)
+                TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, pk, Ax, alpha);
+                alpha[0] = resK[0] / alpha[0];
+                alpha_rt[0] = static_cast<RTYPE>(alpha[0]);
+
+                // Update x_sol = x_sol + alpha * pk
+                TensorUtils<ITYPE, RTYPE>::axpy(ARR_SIZE, alpha_rt[0], pk, x_sol);
+
+                // Update rk = rk - alpha * A * pk
+                TensorUtils<ITYPE, RTYPE>::axpy(ARR_SIZE, -alpha_rt[0], Ax, rk);
+
+                // Compute new resK
+                TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, rk, rk, beta);
+
+                // Check for convergence
+                if (MathFunc<double>::sqrt(beta[0]) < tol * res0[0])
+                {
+                    Output::print("Converged after %d iterations with residual norm = %f\n", iter + 1, MathFunc<double>::sqrt(beta[0]));
+                    break;
+                }
+                Output::print("Iteration %d: residual norm = %f\n", iter + 1, MathFunc<double>::sqrt(beta[0]));
+
+                // Compute M^-1 * rk and store in zk
+                Prec_Op(rk, zk);
+
+                // Compute beta = (rk' * zk) / (previous rk' * previous rk)
+                TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, rk, zk, beta);
+                double aux = beta[0];
+                beta[0] = beta[0] / resK[0];
+                beta_rt[0] = static_cast<RTYPE>(beta[0]);
+
+                // Update pk = zk + beta * pk
+                TensorUtils<ITYPE, RTYPE>::scale(ARR_SIZE, beta_rt[0], pk);
+                TensorUtils<ITYPE, RTYPE>::axpy(ARR_SIZE, one, zk, pk);
+                resK[0] = aux;
+            }
+        }
 };
 
 #endif // CONJUGATEGRADIENT_HPP
