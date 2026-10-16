@@ -122,6 +122,54 @@ class GMRES
             return false;
         }
 
+        // Arnoldi process to produce Q_k and H_k entries, now with precond
+        template <typename MatVecOp, typename PrecondOp>
+        bool arnoldi(MatVecOp&& MV_Op, PrecondOp&& Prec_Op, const ITYPE k)
+        {
+            // Apply preconditioner to qk
+            Prec_Op(qk, Ax);
+
+            // Compute wk = A * qk
+            MV_Op(Ax, wk);
+
+            // Compute H_k entries
+            for (ITYPE j = 0; j <= k; ++j)
+            {
+                // h_jk = dot(wk, Q_k[:, j])
+                TensorUtils<ITYPE, RTYPE>::vector_matrix_dot(ARR_SIZE, j, wk, Q_k, hk);
+                H_k[k * (MITERS + 1) + j] = hk[0];
+                Output::print("--| H_k[%d][%d] = %f\n", k, j, hk[0]);
+
+                // wk = wk - h_jk * Q_k[:, j]
+                TensorUtils<ITYPE, RTYPE>::vector_matrix_axpy(ARR_SIZE, j, static_cast<RTYPE>(-hk[0]), Q_k, wk);
+            }
+
+            // h_(k+1)k = ||wk||
+            TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, wk, wk, hk);
+            hk[0] = MathFunc<double>::sqrt(hk[0]);
+            Output::print("--| H_k[%d][%d] = %f\n", k, k + 1, hk[0]);
+
+            // Check for breakdown
+            if (hk[0] < 1e-14)
+            {
+                // TODO: handle breakdown (e.g., restart or terminate)
+                // Happy breakdown: the Krylov subspace has been fully explored
+                return true;
+            }
+            H_k[k * (MITERS + 1) + (k + 1)] = hk[0];
+
+            // q_(k+1) = wk / h_(k+1)k
+            hk[0] = oneFP64 / hk[0];
+            TensorUtils<ITYPE, RTYPE>::scale(ARR_SIZE, static_cast<RTYPE>(hk[0]), wk);
+            for (ITYPE i = 0; i < ARR_SIZE; ++i)
+            {
+                Q_k[(k + 1) * ARR_SIZE + i] = wk[i];
+                qk[i] = wk[i];
+            }
+
+            return false;
+        }
+
     public:
         GMRES();
         GMRES(const RTYPE* __restrict xinit, const RTYPE* __restrict rhs);
@@ -242,6 +290,135 @@ class GMRES
                     RTYPE tmp = static_cast<RTYPE>(yk[j]);
                     x_sol[i] += Q_k[j * ARR_SIZE + i] * tmp;
                 }
+            }
+        }
+
+        template <typename MatVecOp, typename PrecondOp>
+        void right_prec(MatVecOp &&MV_Op, PrecondOp &&Prec_Op)
+        {
+            Output::print("Starting RP-GMRES solver...\n");
+
+            // Compute the matvec
+            MV_Op(x0, Ax);
+
+            // Compute b_norm = ||b||
+            TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, b, b, b_norm);
+            b_norm[0] = MathFunc<double>::sqrt(b_norm[0]);
+
+            // Initial residual r0 = b - A * x0
+            TensorUtils<ITYPE, RTYPE>::copy_array(ARR_SIZE, b, qk);
+            TensorUtils<ITYPE, RTYPE>::axpy(ARR_SIZE, negOne, Ax, qk);
+
+            // q0 = r0 / ||r0||
+            TensorUtils<ITYPE, RTYPE>::dot_product(ARR_SIZE, qk, qk, norm);
+            norm[0] = MathFunc<double>::sqrt(norm[0]);
+            gk[0] = norm[0];
+            Output::print("Initial residual norm = %f\n", norm[0]);
+
+            // Check if x0 already satisfies the tolerance
+            if (norm[0] < tol)
+            {
+                Output::print("Initial guess is already within tolerance.\n");
+                return; // x0 is already a good enough solution
+            }
+
+            // Compute first Krylov vector q0 = r0 / ||r0||
+            norm[0] = oneFP64 / norm[0];
+            TensorUtils<ITYPE, RTYPE>::scale(ARR_SIZE, static_cast<RTYPE>(norm[0]), qk);
+
+            // Store q0 in Q_k
+            for (ITYPE i = 0; i < ARR_SIZE; ++i)
+            {
+                Q_k[0 * ARR_SIZE + i] = qk[i];
+            }
+
+            // Iterate for k = 0 to maxIters
+            kIter = 0;
+            bool converged = false;
+            while (kIter < maxIters)
+            {
+
+                // Call Arnoldi process to compute Q_k and H_k
+                arnoldiConverged = arnoldi(MV_Op, Prec_Op, kIter);
+
+                // Apply Givens rotations to H_k
+                apply_givens_rotation(kIter);
+
+                // Update gk
+                gk[kIter + 1] = sn[kIter] * gk[kIter];
+                gk[kIter] = cs[kIter] * gk[kIter];
+
+                // Check if arnoldi converged (happy breakdown)
+                if (arnoldiConverged)
+                {
+                    // Break out of the loop if Arnoldi converged
+                    Output::print("Arnoldi process converged at iteration %d\n", kIter);
+                    double relTol = MathFunc<double>::abs(gk[kIter + 1]) / b_norm[0];
+                    Output::print("GMRES converged at iteration %d with relative tolerance %f\n", kIter, relTol);
+                    converged = true;
+                    break;
+                }
+
+                // Check convergence
+                double relTol = MathFunc<double>::abs(gk[kIter + 1]) / b_norm[0];
+                Output::print("GMRES iteration %d: relative tolerance = %f\n", kIter, relTol);
+                if (relTol < tol)
+                {
+                    Output::print("GMRES converged at iteration %d with relative tolerance %f\n", kIter, relTol);
+                    converged = true;
+                    break; // Converged
+                }
+                kIter++;
+            }
+
+            for (ITYPE j = 0; j < kIter + 1; ++j)
+            {
+                Output::print("gk[%d] = %f\n", j, gk[j]);
+            }
+
+            // Check convergence state
+            if (!converged)
+            {
+                Output::print("Convergence flag value: %d\n", converged);
+                Output::print("GMRES did not converge within the maximum iterations (%d)\n", maxIters);
+                while (1)
+                {
+                    asm volatile("nop");
+                }
+            }
+
+            // Solve the least squares problem H_k * y = gk
+            // Using back substitution since H_k is upper triangular after Givens rotations
+            // NOTE: H_k is column-major stored, so we need to access it accordingly
+            int kStore = static_cast<int>(kIter);
+            for (int i = kStore; i >= 0; --i)
+            {
+                yk[i] = gk[i];
+                for (int j = i + 1; j <= kStore; ++j)
+                {
+                    yk[i] -= H_k[j * (MITERS + 1) + i] * yk[j];
+                }
+                yk[i] /= H_k[i * (MITERS + 1) + i];
+            }
+
+            // Update the solution x_sol = x0 + invM * Q_k * yk
+            // NOTE: Q_k is column-major stored, so we need to access it accordingly
+            RTYPE delta_x[ARR_SIZE];
+            for (ITYPE i = 0; i < ARR_SIZE; ++i)
+            {
+                delta_x[i] = zero;
+                for (ITYPE j = 0; j <= kIter; ++j)
+                {
+                    RTYPE tmp = static_cast<RTYPE>(yk[j]);
+                    delta_x[i] += Q_k[j * ARR_SIZE + i] * tmp;
+                }
+            }
+
+            // Apply preconditioner to delta_x to get the final solution update
+            Prec_Op(delta_x, Ax);
+            for (ITYPE i = 0; i < ARR_SIZE; ++i)
+            {
+                x_sol[i] = x0[i] + Ax[i];
             }
         }
 };
