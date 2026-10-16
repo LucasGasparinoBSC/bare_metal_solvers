@@ -4,7 +4,7 @@
 mkdir -p build
 
 # Common compiler flags in Fish (using an array/list)
-set -l CXXFLAGS -O3 -g -march=native -fno-math-errno -fno-exceptions -fno-rtti -DARR_SIZE=10 -DMITERS=12
+set -l CXXFLAGS -O3 -g -march=native -fno-math-errno -fno-exceptions -fno-rtti -DARR_SIZE=20 -DMITERS=20
 
 echo "Compiling modules..."
 g++ $CXXFLAGS -c Output.cpp -o build/Output.o

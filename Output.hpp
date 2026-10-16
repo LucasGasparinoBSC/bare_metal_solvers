@@ -61,19 +61,42 @@ private:
             raw_putchar('-');
             val = -val;
         }
-        int64_t int_part = (int64_t)val;
-        raw_print_int(int_part);
-        raw_putchar('.');
 
-        double frac_part = val - (double)int_part;
-
+        // 1. Properly round the entire number to the desired precision first
+        // to prevent cascading truncation bugs (e.g., 0.9999999 -> 1.000000)
         double scale = 1.0;
         for (int i = 0; i < precision; i++)
         {
             scale *= 10.0;
         }
 
-        raw_print_int((int64_t)(frac_part * scale + 0.5));
+        // Add 0.5 to round up properly before ripping out the integer segment
+        uint64_t total_rounded = (uint64_t)(val * scale + 0.5);
+        uint64_t int_part = total_rounded / (uint64_t)scale;
+        uint64_t frac_part = total_rounded % (uint64_t)scale;
+
+        // 2. Print the integer part
+        raw_print_int(int_part);
+        raw_putchar('.');
+
+        // 3. Manually pad leading zeros for the fractional part
+        uint64_t padding_check = (uint64_t)scale / 10;
+        while (padding_check > 0 && frac_part < padding_check)
+        {
+            raw_putchar('0');
+            padding_check /= 10;
+        }
+
+        // 4. Print the remaining digits (if frac_part is 0, print nothing more since we padded zeros)
+        if (frac_part > 0 || precision == 0)
+        {
+            raw_print_int(frac_part);
+        }
+        else
+        {
+            // If frac_part was exactly 0, we already printed all '0's via the padding loop except the last one
+            raw_putchar('0');
+        }
     }
 
     static inline void print_typed(char spec, int64_t val)

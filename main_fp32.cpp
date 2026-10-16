@@ -58,9 +58,9 @@ int main()
     const float *solution = solver.get_solution();
 
     // Print the solution
-    // for (idx = 0; idx < ARR_SIZE; idx++) {
-    //    Output::print("solution[%d] = %f\n", idx, solution[idx]);
-    //}
+    for (idx = 0; idx < ARR_SIZE; idx++) {
+        Output::print("solution[%d] = %f\n", idx, solution[idx]);
+    }
 
     // Verify: do Ax-b and check results
     float Ax[ARR_SIZE];
@@ -69,12 +69,13 @@ int main()
     for (idx = 0; idx < ARR_SIZE; idx++)
     {
         r[idx] = Ax[idx] - rhs[idx];
-        if (r[idx] < 0.0f)
-            r[idx] = -r[idx];
+        r[idx] = MathFunc<float>::abs(r[idx]);
 
         // HW trap
-        if (r[idx] > 1e-4f)
+        float eps = 0.0005f;
+        if (r[idx] > eps)
         {
+            Output::print("Residual at index %d is too large: %f\n", idx, r[idx]);
             while (1)
             {
                 asm volatile("nop");
@@ -99,12 +100,12 @@ int main()
     MV_Op(gmres_solution, Ax);
     for (idx = 0; idx < ARR_SIZE; idx++)
     {
-        r[idx] = Ax[idx] - rhs[idx];
-        if (r[idx] < 0.0f)
-            r[idx] = -r[idx];
+        r[idx] = MathFunc<float>::abs(Ax[idx] - rhs[idx]);
         // HW trap
-        if (r[idx] > 1e-4f)
+        float eps = 0.0005f;
+        if (r[idx] > eps)
         {
+            Output::print("GMRES Residual at index %d is too large: %f\n", idx, r[idx]);
             while (1)
             {
                 asm volatile("nop");
